@@ -1,0 +1,3 @@
+[console_scripts]
+toolz = app:main
+
