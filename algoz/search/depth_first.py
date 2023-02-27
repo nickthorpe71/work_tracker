@@ -1,5 +1,4 @@
 from data_structures.binary_tree import BinaryTree
-from data_structures.queue import Queue
 
 
 def pre_order_search(node, word):
