@@ -1,15 +1,11 @@
 import argparse
 # from search.search_setup import file_search_setup
-from work_intervals.main import log_time
+from work_intervals.main import setup_works_intervals
 
 def main():
     parser = argparse.ArgumentParser(description="Useful toolz")
     
-    parser.add_argument('-lt', '--log-time', required=False, help="log work time in database")
-    logged = parser.parse_args().log_time
-    if logged:
-        log_time(logged)
-
+    setup_works_intervals(parser)
     # file_search_setup(parser)
     
 if __name__ == '__main__':
