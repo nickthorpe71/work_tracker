@@ -1,4 +1,5 @@
 import argparse
+from search import binary, depth_first, breadth_first
 
 
 def main():
@@ -18,7 +19,7 @@ def main():
 
     # tree traversal order
     parser.add_argument('-o', '--order', choices=[
-        "pre-order", "post-order", "level-order"], required=True, help="The order in which to traverse the tree")
+        "pre-order", "post-order", "in-order", "level-order"], required=True, help="The order in which to traverse the tree")
 
     args = parser.parse_args()
 
