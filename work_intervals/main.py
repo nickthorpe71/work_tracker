@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import create_engine, Column,  Integer,  DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -32,7 +32,7 @@ def setup_works_intervals(parser):
         print(get_work_intervals(args.show_time))
 
 def log_time(logged):
-    engine = create_engine('sqlite:///work_intervals.sqlite', echo=True)
+    engine = create_engine('sqlite:///work_intervals.sqlite')
     Base.metadata.create_all(bind=engine)
 
     Session = sessionmaker(bind=engine)
@@ -48,8 +48,8 @@ def log_time(logged):
             session.add(interval)
             session.commit()
             return
-        except:
-            print("Error logging in")
+        except Exception as e:
+            print("Error logging start time: " + str(e))
             return
             
     
@@ -61,19 +61,57 @@ def log_time(logged):
                 return
             interval.end_time = datetime.now()
             session.commit()
+            print(f"Total time: {format_seconds(get_total_time_today())}")
             return
-        except:
-            print("Error logging out")
+        except Exception as e:
+            print("Error logging end time: " + str(e))
             return
+        
     
     session.close()
     engine.dispose()
+    
+def get_total_time_today():
+    engine = create_engine('sqlite:///work_intervals.sqlite')
+    Base.metadata.create_all(bind=engine)
+
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    
+    try:
+        # get all intervals that have a start time today
+        today = datetime.now().date()
+        start = datetime(today.year, today.month, today.day, 0, 0, 0)
+        end = start + timedelta(1)
+        
+        # get all intervals and filter out intervals that
+        # don't have a start time between start and end
+        intervals = session.query(WorkInterval).all()
+        intervals = [interval for interval in intervals if interval.start_time >= start and interval.start_time < end]
+        
+        total_time = 0
+        for interval in intervals:
+            if interval.end_time:
+                total_time += (interval.end_time - interval.start_time).total_seconds()
+            else:
+                total_time += (datetime.now() - interval.start_time).total_seconds()
+
+        return total_time
+    except Exception as e:
+        print("Error getting work intervals: " + str(e))
+        return
+    finally:
+        session.close()
+        engine.dispose()
+        
+def format_seconds(seconds):
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    seconds = seconds % 60
+    return f"{hours}h {minutes}m {seconds}s"
+    
    
 def get_work_intervals(period):
-    '''
-    period: "today" "this-week" "this-month" "this-year"
-    '''
-    
     valid_periods = ["all-time", "today", "this-week", "this-month", "this-year"]
     
     if period not in valid_periods:
@@ -86,45 +124,31 @@ def get_work_intervals(period):
     Session = sessionmaker(bind=engine)
     session = Session()
     
-    if period == "all-time":
-        try:
+    try:
+        if period == "all-time":
             intervals = session.query(WorkInterval).all()
             return intervals
-        except:
-            print("Error getting work intervals")
-            return
     
-    if period == "today":
-        try:
+        if period == "today":
             intervals = session.query(WorkInterval).filter(WorkInterval.start_time >= datetime.today()).all()
             return intervals
-        except:
-            print("Error getting work intervals")
-            return
         
-    if period == "this-week":
-        try:
+        if period == "this-week":
             intervals = session.query(WorkInterval).filter(WorkInterval.start_time >= datetime.today()).all()
             return intervals
-        except:
-            print("Error getting work intervals")
-            return
         
-    if period == "this-month":
-        try:
+        if period == "this-month":
             intervals = session.query(WorkInterval).filter(WorkInterval.start_time >= datetime.today()).all()
             return intervals
-        except:
-            print("Error getting work intervals")
-            return
         
-    if period == "this-year":
-        try:
+        if period == "this-year":
             intervals = session.query(WorkInterval).filter(WorkInterval.start_time >= datetime.today()).all()
             return intervals
-        except:
-            print("Error getting work intervals")
-            return
-        
-    session.close()
-    engine.dispose()
+            
+    except Exception as e:
+        print("Error getting work intervals: " + str(e))
+        return
+    finally:
+        session.close()
+        engine.dispose()
+
