@@ -29,7 +29,7 @@ def setup_works_intervals(parser):
         log_time(args.log_time)
         
     if args.show_time:
-        print(get_work_intervals(args.show_time))
+        print(format_seconds(get_total_time(get_work_intervals(args.show_time))))
 
 def log_time(logged):
     engine = create_engine('sqlite:///work_intervals.sqlite')
@@ -109,41 +109,44 @@ def format_seconds(seconds):
     minutes = (seconds % 3600) // 60
     seconds = seconds % 60
     return f"{hours}h {minutes}m {seconds}s"
+
+def get_total_time(intervals):
+    total_time = 0
+    for interval in intervals:
+        if interval.end_time:
+            total_time += (interval.end_time - interval.start_time).total_seconds()
+        else:
+            total_time += (datetime.now() - interval.start_time).total_seconds()
+
+    return total_time
     
    
-def get_work_intervals(period):
-    valid_periods = ["all-time", "today", "this-week", "this-month", "this-year"]
+def get_work_intervals(period):    
+    period_dict = {
+        'today': (datetime.today().date(), datetime.today().date() + timedelta(days=1)),
+        'all-time': (datetime.min, datetime.max),
+        'this-week': (datetime.today().date() - timedelta(days=datetime.today().weekday()), 
+                      datetime.today().date() + timedelta(days=7-datetime.today().weekday())),
+        'this-month': (datetime(datetime.today().year, datetime.today().month, 1),
+                       datetime(datetime.today().year, datetime.today().month + 1, 1) - timedelta(days=1)),
+        'this-year': (datetime(datetime.today().year, 1, 1),
+                      datetime(datetime.today().year + 1, 1, 1) - timedelta(days=1))
+    }
     
-    if period not in valid_periods:
-        print("Invalid period")
-        return
-    
-    engine = create_engine('sqlite:///work_intervals.sqlite', echo=True)
+    engine = create_engine('sqlite:///work_intervals.sqlite')
     Base.metadata.create_all(bind=engine)
 
     Session = sessionmaker(bind=engine)
     session = Session()
     
     try:
-        if period == "all-time":
-            intervals = session.query(WorkInterval).all()
-            return intervals
-    
-        if period == "today":
-            intervals = session.query(WorkInterval).filter(WorkInterval.start_time >= datetime.today()).all()
-            return intervals
         
-        if period == "this-week":
-            intervals = session.query(WorkInterval).filter(WorkInterval.start_time >= datetime.today()).all()
-            return intervals
-        
-        if period == "this-month":
-            intervals = session.query(WorkInterval).filter(WorkInterval.start_time >= datetime.today()).all()
-            return intervals
-        
-        if period == "this-year":
-            intervals = session.query(WorkInterval).filter(WorkInterval.start_time >= datetime.today()).all()
-            return intervals
+        start_time, end_time = period_dict[period]
+        Session = sessionmaker(bind=engine)
+        session = Session()
+        work_intervals = session.query(WorkInterval).filter(WorkInterval.start_time >= start_time, 
+                                                            WorkInterval.end_time <= end_time).all()
+        return work_intervals
             
     except Exception as e:
         print("Error getting work intervals: " + str(e))
