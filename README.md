@@ -1,5 +1,17 @@
 # Work Tool
 
+### Examples
+Log time:
+```
+toolz -lt in
+toolz -lt out
+```
+
+Show time:
+```
+toolz -st- all-time -vt chart
+```
+
 ### Useful Commands
 Run in bash directly. Creates a text file with 1000 random numbers.
 ```

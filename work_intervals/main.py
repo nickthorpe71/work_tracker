@@ -1,4 +1,11 @@
 from datetime import datetime, timedelta
+from typing import List
+
+# visualization
+from tabulate import tabulate
+from termgraph import termgraph as tg
+
+# database
 from sqlalchemy import create_engine, Column,  Integer,  DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -21,7 +28,8 @@ class WorkInterval(Base):
     
 def setup_works_intervals(parser):
     parser.add_argument('-lt', '--log-time', choices=["in", "out"], required=False, help="log work time in database")
-    parser.add_argument('-st', '--show-time', choices=["all-time", "today", "this-week", "this-month", "this-year"], required=False, help="show work time from database")
+    parser.add_argument('-st', '--show-time', choices=["all-time", "today", "this-week", "this-month", "this-year"], required=False, help="show intervals for specified period as a number or specify -vt to show as a table or chart")
+    parser.add_argument('-vt', '--visualization-type', choices=["number", "table", "chart"], required=False, help="specift visualization type for -st")
     
     args = parser.parse_args()
     
@@ -29,7 +37,13 @@ def setup_works_intervals(parser):
         log_time(args.log_time)
         
     if args.show_time:
-        print(format_seconds(get_total_time(get_work_intervals(args.show_time))))
+        if not args.visualization_type or args.visualization_type == "number":
+            print(format_seconds(get_total_time(get_work_intervals(args.show_time))))
+        elif args.visualization_type == "table":
+            visualize_work_interval_table(get_work_intervals(args.show_time))
+        elif args.visualization_type == "chart":
+            visualize_work_interval_chart(get_work_intervals(args.show_time))    
+    
 
 def log_time(logged):
     engine = create_engine('sqlite:///work_intervals.sqlite')
@@ -110,7 +124,7 @@ def format_seconds(seconds):
     seconds = seconds % 60
     return f"{hours}h {minutes}m {seconds}s"
 
-def get_total_time(intervals):
+def get_total_time(intervals: List[WorkInterval]):
     total_time = 0
     for interval in intervals:
         if interval.end_time:
@@ -119,9 +133,8 @@ def get_total_time(intervals):
             total_time += (datetime.now() - interval.start_time).total_seconds()
 
     return total_time
-    
    
-def get_work_intervals(period):    
+def get_work_intervals(period: str):    
     period_dict = {
         'today': (datetime.today().date(), datetime.today().date() + timedelta(days=1)),
         'all-time': (datetime.min, datetime.max),
@@ -154,4 +167,37 @@ def get_work_intervals(period):
     finally:
         session.close()
         engine.dispose()
+        
+def visualize_work_interval_table(intervals: List[WorkInterval]):
+    """
+    Visualizes work intervals as a table using the tabulate library.
+    """
+    
+    table = [[interval.id, interval.start_time, interval.end_time] for interval in intervals]
+    headers = ["ID", "Start Time", "End Time"]
+    print(tabulate(table, headers=headers))
+    
+def visualize_work_interval_chart(intervals: List[WorkInterval]):
+    """
+    Visualizes work intervals as a bar graph using the termgraph library.
+    """ 
+    # Get the total duration of each day
+    daily_durations = {}
+    for interval in intervals:
+        date = interval.start_time.date()
+        duration = (interval.end_time - interval.start_time).total_seconds() / 3600
+        if date in daily_durations:
+            daily_durations[date] += duration
+        else:
+            daily_durations[date] = duration
 
+    values = []
+    labels = []
+    for date in sorted(daily_durations.keys()):
+        values.append([daily_durations[date]])
+        labels.append(date.strftime("%Y-%m-%d"))
+    
+    # Set up the graph parameters and display the graph
+    args = {'width': 80, 'suffix': ' hrs', 'no_labels': False, 'format': '{}'}
+    tg.stacked_graph(labels, values, values, 1, args, [91])
+    print(f"Total time: {format_seconds(get_total_time(intervals))}")
