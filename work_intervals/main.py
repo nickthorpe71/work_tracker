@@ -1,12 +1,12 @@
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Dict, Any, Tuple
 
 # visualization
 from tabulate import tabulate
 from termgraph import termgraph as tg
 
 # database
-from sqlalchemy import create_engine, Column,  Integer,  DateTime
+from sqlalchemy import create_engine, Column,  Integer, DateTime, Engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -16,8 +16,8 @@ class WorkInterval(Base):
     __tablename__ = 'work_intervals'
     
     id = Column(Integer, primary_key=True, autoincrement=True, unique=True)
-    start_time = Column(DateTime)
-    end_time = Column(DateTime)
+    start_time = Column(DateTime, nullable=False)
+    end_time = Column(DateTime, nullable=False)
     
     def __init__(self, start_time, end_time):
         self.start_time = start_time
@@ -45,7 +45,7 @@ def setup_works_intervals(parser):
             visualize_work_interval_chart(get_work_intervals(args.show_time))    
     
 
-def log_time(logged):
+def log_time(logged: str):
     engine = create_engine('sqlite:///work_intervals.sqlite')
     Base.metadata.create_all(bind=engine)
 
@@ -118,13 +118,13 @@ def get_total_time_today():
         session.close()
         engine.dispose()
         
-def format_seconds(seconds):
+def format_seconds(seconds: int) -> str:
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
     seconds = seconds % 60
     return f"{hours}h {minutes}m {seconds}s"
 
-def get_total_time(intervals: List[WorkInterval]):
+def get_total_time(intervals: List[WorkInterval]) -> int:
     total_time = 0
     for interval in intervals:
         if interval.end_time:
@@ -134,8 +134,8 @@ def get_total_time(intervals: List[WorkInterval]):
 
     return total_time
    
-def get_work_intervals(period: str):    
-    period_dict = {
+def get_work_intervals(period: str) -> List[WorkInterval]:    
+    period_dict: Dict[str, Tuple[datetime, datetime]] = {
         'today': (datetime.today().date(), datetime.today().date() + timedelta(days=1)),
         'all-time': (datetime.min, datetime.max),
         'this-week': (datetime.today().date() - timedelta(days=datetime.today().weekday()), 
@@ -146,19 +146,21 @@ def get_work_intervals(period: str):
                       datetime(datetime.today().year + 1, 1, 1) - timedelta(days=1))
     }
     
-    engine = create_engine('sqlite:///work_intervals.sqlite')
+    engine: Engine = create_engine('sqlite:///work_intervals.sqlite')
     Base.metadata.create_all(bind=engine)
 
-    Session = sessionmaker(bind=engine)
-    session = Session()
+    Session: sessionmaker = sessionmaker(bind=engine)
+    session: Session = Session()
     
     try:
         
+        start_time: datetime
+        end_time: datetime
         start_time, end_time = period_dict[period]
-        Session = sessionmaker(bind=engine)
-        session = Session()
-        work_intervals = session.query(WorkInterval).filter(WorkInterval.start_time >= start_time, 
-                                                            WorkInterval.end_time <= end_time).all()
+        Session: sessionmaker = sessionmaker(bind=engine)
+        session: Session = Session()
+        work_intervals: List[WorkInterval] = session.query(WorkInterval).filter(WorkInterval.start_time >= start_time, 
+                                                                                WorkInterval.end_time <= end_time).all()
         return work_intervals
             
     except Exception as e:
@@ -168,7 +170,7 @@ def get_work_intervals(period: str):
         session.close()
         engine.dispose()
         
-def visualize_work_interval_table(intervals: List[WorkInterval]):
+def visualize_work_interval_table(intervals: List[WorkInterval]) -> None:
     """
     Visualizes work intervals as a table using the tabulate library.
     """
@@ -177,27 +179,27 @@ def visualize_work_interval_table(intervals: List[WorkInterval]):
     headers = ["ID", "Start Time", "End Time"]
     print(tabulate(table, headers=headers))
     
-def visualize_work_interval_chart(intervals: List[WorkInterval]):
+def visualize_work_interval_chart(intervals: List[WorkInterval]) -> None:
     """
     Visualizes work intervals as a bar graph using the termgraph library.
     """ 
     # Get the total duration of each day
-    daily_durations = {}
+    daily_durations: Dict[date, float] = {}
     for interval in intervals:
-        date = interval.start_time.date()
-        duration = (interval.end_time - interval.start_time).total_seconds() / 3600
+        date: date = interval.start_time.date()
+        duration: float = (interval.end_time - interval.start_time).total_seconds() / 3600
         if date in daily_durations:
             daily_durations[date] += duration
         else:
             daily_durations[date] = duration
 
-    values = []
-    labels = []
+    values: List[List[float]] = []
+    labels: List[str] = []
     for date in sorted(daily_durations.keys()):
         values.append([daily_durations[date]])
         labels.append(date.strftime("%Y-%m-%d"))
     
     # Set up the graph parameters and display the graph
-    args = {'width': 80, 'suffix': ' hrs', 'no_labels': False, 'format': '{}'}
+    args: Dict[str, Any] = {'width': 80, 'suffix': ' hrs', 'no_labels': False, 'format': '{}'}
     tg.stacked_graph(labels, values, values, 1, args, [91])
     print(f"Total time: {format_seconds(get_total_time(intervals))}")
