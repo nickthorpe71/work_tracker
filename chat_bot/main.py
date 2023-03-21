@@ -18,4 +18,7 @@ memory = ConversationBufferMemory(memory_key="chat_history")
 llm=OpenAI(temperature=0)
 agent_chain = initialize_agent(tools, llm, agent="conversational-react-description", verbose=True, memory=memory)
 
-agent_chain.run(input="tell me my name in english then in spanish then in cantonese")
+# let user input text to ask the bot
+user_input = input("You: ")
+
+agent_chain.run(input=user_input)
