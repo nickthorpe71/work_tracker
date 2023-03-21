@@ -28,7 +28,7 @@ class WorkInterval(Base):
     
 def setup_works_intervals(parser):
     parser.add_argument('-lt', '--log-time', choices=["in", "out"], required=False, help="log work time in database")
-    parser.add_argument('-st', '--show-time', choices=["all-time", "today", "this-week", "this-month", "this-year"], required=False, help="show intervals for specified period as a number or specify -vt to show as a table or chart")
+    parser.add_argument('-st', '--show-time', choices=["all-time", "today", "this-week", "this-month", "this-year"], required=False, help="show intervals for specified period as a number or specify -vt to select another visualization type")
     parser.add_argument('-vt', '--visualization-type', choices=["number", "table", "chart"], required=False, help="specift visualization type for -st")
     
     args = parser.parse_args()
