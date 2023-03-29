@@ -8,6 +8,7 @@ search/__init__.py
 search/binary.py
 search/breadth_first.py
 search/depth_first.py
+search/search_setup.py
 toolz.egg-info/PKG-INFO
 toolz.egg-info/SOURCES.txt
 toolz.egg-info/dependency_links.txt

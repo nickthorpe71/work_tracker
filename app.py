@@ -1,6 +1,6 @@
 import argparse
 # from search.search_setup import file_search_setup
-from work_intervals.main import setup_works_intervals
+from src.toolz.work_intervals.main import setup_works_intervals
 
 def main():
     parser = argparse.ArgumentParser(description="Useful toolz")
